@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>REFLEX — Test de Reacción</title>
+<link rel="icon" href="icon.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0F0E17;
+    --card: #1A1825;
+    --card-border: #2A2740;
+    --text: #E8E6F0;
+    --text-dim: #8B87A3;
+    --accent: #7C3AED;
+    --accent-glow: rgba(124, 58, 237, 0.35);
+    --wait: #DC2626;
+    --go: #10B981;
+    --early: #F59E0B;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overscroll-behavior: none;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: clamp(12px, 4vw, 32px);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    background-image:
+      radial-gradient(circle at 20% 20%, var(--accent-glow) 0%, transparent 35%),
+      radial-gradient(circle at 80% 85%, rgba(220,38,38,0.12) 0%, transparent 35%);
+  }
+
+  .app {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: clamp(12px, 4vw, 22px);
+  }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(10px, 2.8vw, 12px);
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-size: clamp(24px, 8vw, 32px);
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.5px;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: clamp(6px, 2vw, 10px);
+    margin-bottom: clamp(10px, 3vw, 16px);
+  }
+
+  .stat {
+    flex: 1;
+    min-width: 0;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: clamp(8px, 2.5vw, 12px) clamp(6px, 2vw, 14px);
+    text-align: center;
+  }
+
+  .stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(9px, 2.2vw, 10px);
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(15px, 4.5vw, 20px);
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .stat-value.highlight {
+    color: var(--accent);
+  }
+
+  .arena {
+    position: relative;
+    height: clamp(260px, 52vh, 420px);
+    border-radius: 24px;
+    border: 1px solid var(--card-border);
+    background: var(--card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: clamp(16px, 5vw, 30px);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    overflow: hidden;
+  }
+
+  .arena::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    background: radial-gradient(circle at center, currentColor 0%, transparent 70%);
+  }
+
+  .arena-inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  .arena-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(11px, 3vw, 13px);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: clamp(6px, 2vw, 10px);
+  }
+
+  .arena-main {
+    font-size: clamp(16px, 5vw, 22px);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .arena-timer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(38px, 13vw, 56px);
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+
+  /* Estado: reposo, antes de empezar */
+  .arena.idle {
+    border-color: var(--accent);
+  }
+  .arena.idle .arena-main { color: var(--text); }
+
+  /* Estado: esperando (rojo) */
+  .arena.waiting {
+    background: linear-gradient(180deg, var(--card) 0%, #2a1010 100%);
+    border-color: var(--wait);
+    color: var(--wait);
+  }
+  .arena.waiting::before { opacity: 0.15; }
+  .arena.waiting .arena-main { color: var(--wait); }
+
+  /* Estado: ¡ya! (verde) */
+  .arena.go {
+    background: linear-gradient(180deg, var(--card) 0%, #0d2a1e 100%);
+    border-color: var(--go);
+    color: var(--go);
+  }
+  .arena.go::before { opacity: 0.2; }
+  .arena.go .arena-timer { color: var(--go); }
+
+  /* Estado: falso inicio */
+  .arena.early {
+    background: linear-gradient(180deg, var(--card) 0%, #2a2010 100%);
+    border-color: var(--early);
+    color: var(--early);
+  }
+  .arena.early .arena-main { color: var(--early); }
+
+  /* Estado: resultado final */
+  .arena.result {
+    border-color: var(--accent);
+  }
+
+  .pulse-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: currentColor;
+    margin: 0 auto 16px;
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.5; }
+  }
+
+  .hint {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 16px;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-reset {
+    display: none;
+    margin: 18px auto 0;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 28px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+  }
+
+  .btn-reset.visible {
+    display: block;
+  }
+
+  .btn-reset:active {
+    transform: scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-dot { animation: none; }
+    .arena { transition: none; }
+  }
+
+  /* Móviles muy pequeños (ej. iPhone SE, ~360px o menos) */
+  @media (max-width: 360px) {
+    .stat-label { display: none; }
+    .arena-main br { display: none; }
+  }
+
+  /* Pantallas cortas o modo landscape en celular: la arena domina menos */
+  @media (max-height: 640px) {
+    .app { max-width: 480px; }
+    header { margin-bottom: 10px; }
+    h1 { font-size: 22px; }
+    .eyebrow { margin-bottom: 2px; }
+    .stats-row { margin-bottom: 10px; }
+    .arena { height: clamp(200px, 44vh, 300px); }
+    .arena-timer { font-size: clamp(32px, 10vw, 44px); }
+    .hint { margin-top: 10px; }
+  }
+
+  /* Tablet y escritorio: la tarjeta crece y respira más en vez de estirarse */
+  @media (min-width: 700px) {
+    .app { max-width: 460px; }
+    .arena { height: 460px; }
+    h1 { font-size: 36px; }
+    .btn-reset { cursor: pointer; }
+    .btn-reset:hover { filter: brightness(1.1); }
+    .arena:hover { border-color: var(--accent); }
+  }
+
+  /* Escritorio grande: evitar que se vea perdido en el centro de la pantalla */
+  @media (min-width: 1100px) {
+    .app { max-width: 500px; }
+    .arena { height: 500px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="eyebrow">TEST DE REACCIÓN</div>
+    <h1>REFLEX</h1>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-label">Último</div>
+      <div class="stat-value" id="lastTime">— ms</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Récord</div>
+      <div class="stat-value highlight" id="bestTime">— ms</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Intentos</div>
+      <div class="stat-value" id="attemptCount">0</div>
+    </div>
+  </div>
+
+  <div class="arena idle" id="arena">
+    <div class="arena-inner" id="arenaContent">
+      <div class="arena-label">Toca para empezar</div>
+      <div class="arena-main">Cuando la zona se ponga<br>verde, toca lo más<br>rápido posible</div>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">¡Cuidado! Si tocas antes de tiempo, pierdes el intento.</div>
+  <button class="btn-reset" id="resetBtn">Reiniciar récord</button>
+</div>
+
+<script>
+  const arena = document.getElementById('arena');
+  const arenaContent = document.getElementById('arenaContent');
+  const lastTimeEl = document.getElementById('lastTime');
+  const bestTimeEl = document.getElementById('bestTime');
+  const attemptCountEl = document.getElementById('attemptCount');
+  const hintEl = document.getElementById('hint');
+  const resetBtn = document.getElementById('resetBtn');
+
+  const STATE = { IDLE: 'idle', WAITING: 'waiting', GO: 'go', EARLY: 'early', RESULT: 'result' };
+  let current = STATE.IDLE;
+  let timeoutId = null;
+  let startTimestamp = 0;
+  let attempts = parseInt(localStorage.getItem('reflex_attempts') || '0', 10);
+  let best = localStorage.getItem('reflex_best') ? parseInt(localStorage.getItem('reflex_best'), 10) : null;
+
+  function renderStats() {
+    attemptCountEl.textContent = attempts;
+    bestTimeEl.textContent = best !== null ? best + ' ms' : '— ms';
+    resetBtn.classList.toggle('visible', best !== null);
+  }
+
+  function setArenaState(state) {
+    arena.className = 'arena ' + state;
+    current = state;
+  }
+
+  function goToIdle() {
+    setArenaState(STATE.IDLE);
+    arenaContent.innerHTML = `
+      <div class="arena-label">Toca para empezar</div>
+      <div class="arena-main">Cuando la zona se ponga<br>verde, toca lo más<br>rápido posible</div>
+    `;
+    hintEl.textContent = '¡Cuidado! Si tocas antes de tiempo, pierdes el intento.';
+  }
+
+  function goToWaiting() {
+    setArenaState(STATE.WAITING);
+    arenaContent.innerHTML = `
+      <div class="pulse-dot"></div>
+      <div class="arena-label">Prepárate</div>
+      <div class="arena-main">Espera al verde...</div>
+    `;
+    hintEl.textContent = 'No toques todavía.';
+
+    const delay = 1500 + Math.random() * 2500; // entre 1.5s y 4s
+    timeoutId = setTimeout(goToGo, delay);
+  }
+
+  function goToGo() {
+    setArenaState(STATE.GO);
+    startTimestamp = performance.now();
+    arenaContent.innerHTML = `
+      <div class="arena-label">¡AHORA!</div>
+      <div class="arena-timer" id="liveTimer">0</div>
+    `;
+    hintEl.textContent = 'Toca ya.';
+  }
+
+  function goToEarly() {
+    clearTimeout(timeoutId);
+    setArenaState(STATE.EARLY);
+    arenaContent.innerHTML = `
+      <div class="arena-label">Falso inicio</div>
+      <div class="arena-main">Tocaste antes de tiempo.<br>Vuelve a intentarlo.</div>
+    `;
+    hintEl.textContent = 'Toca la zona para reintentar.';
+  }
+
+  function goToResult(reactionMs) {
+    setArenaState(STATE.RESULT);
+    attempts++;
+    localStorage.setItem('reflex_attempts', attempts);
+
+    let isRecord = false;
+    if (best === null || reactionMs < best) {
+      best = reactionMs;
+      localStorage.setItem('reflex_best', best);
+      isRecord = true;
+    }
+    lastTimeEl.textContent = reactionMs + ' ms';
+    renderStats();
+
+    const message = isRecord ? '¡Nuevo récord!' : ratingFor(reactionMs);
+    arenaContent.innerHTML = `
+      <div class="arena-label">${isRecord ? '🏆 Nuevo récord' : 'Tu tiempo'}</div>
+      <div class="arena-timer">${reactionMs}<span style="font-size:20px;">ms</span></div>
+      <div class="arena-main" style="margin-top:10px; font-size:15px; color:var(--text-dim);">${message}</div>
+    `;
+    hintEl.textContent = 'Toca la zona para intentarlo de nuevo.';
+  }
+
+  function ratingFor(ms) {
+    if (ms < 250) return 'El propio Flash ⚡';
+    if (ms < 400) return 'Nah, estás en el promedio';
+    return 'Lo harías mejor dormido xd';
+  }
+
+  function handleTap() {
+    if (current === STATE.IDLE || current === STATE.EARLY || current === STATE.RESULT) {
+      goToWaiting();
+    } else if (current === STATE.WAITING) {
+      goToEarly();
+    } else if (current === STATE.GO) {
+      const reactionMs = Math.round(performance.now() - startTimestamp);
+      goToResult(reactionMs);
+    }
+  }
+
+  arena.addEventListener('click', handleTap);
+
+  resetBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    best = null;
+    attempts = 0;
+    localStorage.removeItem('reflex_best');
+    localStorage.removeItem('reflex_attempts');
+    lastTimeEl.textContent = '— ms';
+    renderStats();
+  });
+
+  renderStats();
+</script>
+
+</body>
+</html>
